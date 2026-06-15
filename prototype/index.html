@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>zachary · 耗材管理系统</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --primary: #1F4E79;
+  --primary-light: #2E75B6;
+  --primary-lighter: #E8F0F8;
+  --primary-bg: #F0F5FA;
+  --success: #27AE60;
+  --success-bg: #E8F8EF;
+  --warning: #F39C12;
+  --warning-bg: #FEF9E7;
+  --danger: #E74C3C;
+  --danger-bg: #FDEDEC;
+  --info: #3498DB;
+  --bg: #F4F6F9;
+  --card: #FFFFFF;
+  --text: #2C3E50;
+  --text-light: #7F8C8D;
+  --text-lighter: #BDC3C7;
+  --border: #E1E8ED;
+  --sidebar-w: 240px;
+  --header-h: 56px;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,.1);
+  --transition: .2s ease;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); line-height:1.6; overflow-x:hidden; }
+a { text-decoration:none; color:inherit; }
+
+/* ─── Login ─── */
+.login-overlay {
+  position:fixed; inset:0; background:linear-gradient(135deg, #1a3a5c 0%, #1F4E79 50%, #2E75B6 100%);
+  display:flex; align-items:center; justify-content:center; z-index:9999;
+  transition:opacity .4s, visibility .4s;
+}
+.login-overlay.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+.login-card {
+  background:#fff; border-radius:12px; padding:48px 40px; width:400px; max-width:92vw;
+  box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:center;
+}
+.login-card .logo { font-size:28px; font-weight:700; color:var(--primary); margin-bottom:4px; }
+.login-card .sub { font-size:13px; color:var(--text-light); margin-bottom:32px; }
+.login-card .field { text-align:left; margin-bottom:20px; }
+.login-card label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:var(--text); }
+.login-card input {
+  width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:6px;
+  font-size:14px; transition:var(--transition); outline:none;
+}
+.login-card input:focus { border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(46,117,182,.15); }
+.login-card .btn {
+  width:100%; padding:12px; background:var(--primary); color:#fff; border:none; border-radius:6px;
+  font-size:15px; font-weight:600; cursor:pointer; transition:var(--transition); margin-top:8px;
+}
+.login-card .btn:hover { background:var(--primary-light); }
+.login-card .hint { margin-top:16px; font-size:12px; color:var(--text-light); }
+
+/* ─── Layout ─── */
+.app-layout { display:none; min-height:100vh; }
+.app-layout.active { display:flex; }
+.sidebar {
+  width:var(--sidebar-w); background:var(--primary); color:#fff; position:fixed; top:0; left:0;
+  bottom:0; z-index:100; overflow-y:auto; transition:transform var(--transition); display:flex; flex-direction:column;
+}
+.sidebar-header { padding:20px 20px 24px; border-bottom:1px solid rgba(255,255,255,.1); }
+.sidebar-header .brand { font-size:17px; font-weight:700; letter-spacing:.5px; }
+.sidebar-header .brand small { display:block; font-size:11px; opacity:.6; font-weight:400; margin-top:2px; }
+.sidebar-nav { flex:1; padding:8px 0; }
+.nav-section { padding:0 16px; margin-top:12px; }
+.nav-section-title { font-size:11px; text-transform:uppercase; opacity:.45; letter-spacing:1px; padding:8px 4px; }
+.nav-item {
+  display:flex; align-items:center; gap:10px; padding:10px 16px; margin:2px 8px; border-radius:6px;
+  cursor:pointer; font-size:14px; transition:var(--transition); color:rgba(255,255,255,.75);
+}
+.nav-item:hover { background:rgba(255,255,255,.1); color:#fff; }
+.nav-item.active { background:rgba(255,255,255,.18); color:#fff; font-weight:600; }
+.nav-item .icon { width:20px; text-align:center; font-size:15px; }
+.nav-item .badge { margin-left:auto; background:var(--danger); color:#fff; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600; }
+.sidebar-footer { padding:12px 16px; border-top:1px solid rgba(255,255,255,.1); }
+.sidebar-footer .user-info { display:flex; align-items:center; gap:10px; padding:8px; border-radius:6px; cursor:pointer; transition:var(--transition); }
+.sidebar-footer .user-info:hover { background:rgba(255,255,255,.1); }
+.sidebar-footer .avatar { width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; }
+.sidebar-footer .name { font-size:13px; }
+.sidebar-footer .role { font-size:11px; opacity:.6; }
+
+.main-wrap { margin-left:var(--sidebar-w); flex:1; display:flex; flex-direction:column; min-height:100vh; }
+.topbar {
+  height:var(--header-h); background:var(--card); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; padding:0 24px; gap:16px; position:sticky; top:0; z-index:50;
+}
+.topbar .menu-toggle { display:none; background:none; border:none; font-size:22px; cursor:pointer; color:var(--text); padding:4px; }
+.topbar .breadcrumb { font-size:13px; color:var(--text-light); }
+.topbar .breadcrumb span { color:var(--text); font-weight:600; }
+.topbar .spacer { flex:1; }
+.topbar .topbar-action { position:relative; }
+.topbar .icon-btn { background:none; border:none; font-size:18px; cursor:pointer; color:var(--text-light); padding:6px 8px; border-radius:6px; transition:var(--transition); position:relative; }
+.topbar .icon-btn:hover { background:var(--bg); color:var(--text); }
+.topbar .dot { position:absolute; top:4px; right:6px; width:8px; height:8px; background:var(--danger); border-radius:50%; border:2px solid #fff; }
+.main-content { flex:1; padding:24px; max-width:1400px; }
+
+/* ─── Cards & Stats ─── */
+.page { display:none; }
+.page.active { display:block; }
+.page-title { font-size:22px; font-weight:700; margin-bottom:4px; }
+.page-subtitle { font-size:13px; color:var(--text-light); margin-bottom:24px; }
+.stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:24px; }
+.stat-card {
+  background:var(--card); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow);
+  display:flex; align-items:center; gap:16px; transition:var(--transition);
+}
+.stat-card:hover { box-shadow:var(--shadow-lg); transform:translateY(-1px); }
+.stat-icon { width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+.stat-icon.blue { background:#E8F0F8; color:var(--primary); }
+.stat-icon.green { background:#E8F8EF; color:var(--success); }
+.stat-icon.orange { background:#FEF9E7; color:var(--warning); }
+.stat-icon.red { background:#FDEDEC; color:var(--danger); }
+.stat-value { font-size:26px; font-weight:700; }
+.stat-label { font-size:12px; color:var(--text-light); margin-top:2px; }
+
+.card {
+  background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
+}
+.card-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.card-header h3 { font-size:15px; font-weight:600; }
+.card-body { padding:20px; }
+.card-body.no-padding { padding:0; }
+
+/* ─── Charts Row ─── */
+.charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.chart-box { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; }
+.chart-box h3 { font-size:14px; font-weight:600; margin-bottom:16px; }
+.chart-box canvas { max-height:260px; }
+
+/* ─── Tables ─── */
+.mat-select-wrap { position:relative; }
+.mat-select-wrap input { width:100%; padding:8px 10px 8px 32px; border:1px solid var(--border); border-radius:6px 6px 0 0; font-size:13px; }
+.mat-select-wrap .search-icon { position:absolute; left:10px; top:10px; font-size:13px; }
+.mat-select-wrap select { width:100%; padding:8px 10px; border:1px solid var(--border); border-top:none; border-radius:0 0 6px 6px; font-size:13px; max-height:200px; background:#fff; }
+.mat-select-wrap select option { padding:6px 8px; }
+
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead th {
+  background:#F8FAFB; padding:12px 16px; text-align:left; font-weight:600; color:var(--text-light);
+  border-bottom:2px solid var(--border); white-space:nowrap; font-size:12px; text-transform:uppercase; letter-spacing:.3px;
+}
+tbody td { padding:12px 16px; border-bottom:1px solid var(--border); }
+tbody tr:hover { background:var(--primary-bg); }
+.badge {
+  display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600;
+}
+.badge-success { background:var(--success-bg); color:var(--success); }
+.badge-warning { background:var(--warning-bg); color:var(--warning); }
+.badge-danger { background:var(--danger-bg); color:var(--danger); }
+.badge-info { background:#E8F4FD; color:var(--info); }
+.badge-default { background:#F0F0F0; color:#666; }
+.text-danger { color:var(--danger); font-weight:600; }
+.text-success { color:var(--success); font-weight:600; }
+
+/* ─── Forms ─── */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.form-grid.col-3 { grid-template-columns:1fr 1fr 1fr; }
+.form-group { display:flex; flex-direction:column; gap:6px; }
+.form-group.full { grid-column:1/-1; }
+.form-group label { font-size:13px; font-weight:600; color:var(--text); }
+.form-group label .req { color:var(--danger); margin-left:2px; }
+.form-group input, .form-group select, .form-group textarea {
+  padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:13px;
+  outline:none; transition:var(--transition); font-family:inherit; background:#fff;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(46,117,182,.1);
+}
+.form-actions { display:flex; gap:12px; margin-top:24px; padding-top:20px; border-top:1px solid var(--border); }
+
+/* ─── Buttons ─── */
+.btn {
+  display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:6px;
+  font-size:13px; font-weight:600; cursor:pointer; border:none; transition:var(--transition); white-space:nowrap;
+}
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-primary:hover { background:var(--primary-light); }
+.btn-outline { background:#fff; color:var(--primary); border:1.5px solid var(--primary); }
+.btn-outline:hover { background:var(--primary-lighter); }
+.btn-success { background:var(--success); color:#fff; }
+.btn-success:hover { opacity:.9; }
+.btn-danger { background:var(--danger); color:#fff; }
+.btn-danger:hover { opacity:.9; }
+.btn-ghost { background:transparent; color:var(--text-light); }
+.btn-ghost:hover { background:var(--bg); color:var(--text); }
+.btn-sm { padding:6px 12px; font-size:12px; }
+.btn-xs { padding:4px 8px; font-size:11px; border-radius:4px; }
+.btn-group { display:flex; gap:8px; }
+
+/* ─── Search & Filters ─── */
+.toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+.toolbar .search-box { position:relative; flex:1; min-width:200px; max-width:360px; }
+.toolbar .search-box input {
+  width:100%; padding:9px 12px 9px 36px; border:1.5px solid var(--border); border-radius:6px; font-size:13px; outline:none;
+}
+.toolbar .search-box input:focus { border-color:var(--primary-light); }
+.toolbar .search-box .sicon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-lighter); font-size:14px; }
+.toolbar select { padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:13px; outline:none; background:#fff; }
+
+/* ─── Modal ─── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:200; display:flex;
+  align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:.25s;
+}
+.modal-overlay.show { opacity:1; visibility:visible; }
+.modal {
+  background:#fff; border-radius:12px; width:540px; max-width:94vw; max-height:88vh; overflow-y:auto;
+  box-shadow:0 20px 50px rgba(0,0,0,.25);
+}
+.modal-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-header h3 { font-size:16px; }
+.modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-light); padding:4px; }
+.modal-body { padding:20px; }
+.modal-footer { padding:16px 20px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
+
+/* ─── Toast ─── */
+.toast-container { position:fixed; top:20px; right:20px; z-index:300; display:flex; flex-direction:column; gap:8px; }
+.toast {
+  background:#fff; border-radius:8px; padding:14px 20px; box-shadow:0 8px 24px rgba(0,0,0,.15);
+  display:flex; align-items:center; gap:10px; font-size:13px; animation:slideIn .3s ease; min-width:280px;
+}
+.toast.success { border-left:4px solid var(--success); }
+.toast.error { border-left:4px solid var(--danger); }
+.toast.warning { border-left:4px solid var(--warning); }
+@keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+/* ─── Approval Flow ─── */
+.flow-steps { display:flex; align-items:center; gap:0; margin-bottom:24px; padding:0 10px; }
+.flow-step { display:flex; align-items:center; gap:8px; }
+.flow-dot {
+  width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; background:var(--border); color:var(--text-light);
+}
+.flow-dot.active { background:var(--primary); color:#fff; }
+.flow-dot.done { background:var(--success); color:#fff; }
+.flow-dot.reject { background:var(--danger); color:#fff; }
+.flow-text { font-size:12px; color:var(--text-light); white-space:nowrap; }
+.flow-line { flex:1; height:2px; background:var(--border); min-width:30px; margin:0 4px; }
+.flow-line.done { background:var(--success); }
+
+/* ─── Pagination ─── */
+.pagination { display:flex; gap:4px; justify-content:center; margin-top:20px; }
+.pagination button {
+  padding:7px 13px; border:1px solid var(--border); background:#fff; border-radius:4px;
+  font-size:13px; cursor:pointer; transition:var(--transition);
+}
+.pagination button:hover { border-color:var(--primary-light); color:var(--primary); }
+.pagination button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+
+/* ─── Tabs ─── */
+.tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:20px; }
+.tab-btn {
+  padding:10px 20px; border:none; background:none; font-size:13px; font-weight:600; color:var(--text-light);
+  cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:var(--transition);
+}
+.tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* ─── Mobile ─── */
+@media (max-width:768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .main-wrap { margin-left:0; }
+  .topbar .menu-toggle { display:block; }
+  .form-grid, .form-grid.col-3 { grid-template-columns:1fr; }
+  .charts-row { grid-template-columns:1fr; }
+  .stats-row { grid-template-columns:1fr 1fr; }
+  .toolbar { flex-direction:column; }
+  .toolbar .search-box { max-width:100%; }
+  .flow-steps { flex-wrap:wrap; }
+  .main-content { padding:16px; }
+}
+@media (max-width:480px) {
+  .stats-row { grid-template-columns:1fr; }
+}
+
+/* Sidebar overlay on mobile */
+.sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:99; }
+@media (max-width:768px) {
+  .sidebar-overlay.show { display:block; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div class="login-overlay" id="loginPage">
+  <div class="login-card">
+    <div class="logo">📦 耗材管理系统</div>
+    <div class="sub">zachary</div>
+    <div class="field">
+      <label>用户名</label>
+      <input type="text" id="loginUser" placeholder="请输入工号或用户名" value="admin">
+    </div>
+    <div class="field">
+      <label>密码</label>
+      <input type="password" id="loginPass" placeholder="请输入密码" value="123456">
+    </div>
+    <button class="btn" onclick="doLogin()">登 录</button>
+    <div class="hint">演示账号：admin / teacher / approver — 密码任意</div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div class="app-layout" id="appLayout">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">📦 耗材管理系统<small>zachary</small></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section"><div class="nav-section-title">主导航</div></div>
+      <div class="nav-item active" data-page="dashboard" onclick="navTo('dashboard',this)"><span class="icon">📊</span>工作台</div>
+      <div class="nav-item" data-page="inbound" onclick="navTo('inbound',this)"><span class="icon">📥</span>入库登记</div>
+      <div class="nav-item" data-page="inventory" onclick="navTo('inventory',this)"><span class="icon">📋</span>库存查询</div>
+      <div class="nav-item" data-page="apply" onclick="navTo('apply',this)"><span class="icon">📝</span>领用申请</div>
+      <div class="nav-item" data-page="approve" onclick="navTo('approve',this)"><span class="icon">✅</span>审批管理<span class="badge" id="approveBadge" style="display:none">0</span></div>
+      <div class="nav-section"><div class="nav-section-title">管理</div></div>
+      <div class="nav-item" data-page="supplier" onclick="navTo('supplier',this)"><span class="icon">🏭</span>供应商管理</div>
+      <div class="nav-item" data-page="logs" onclick="navTo('logs',this)"><span class="icon">📜</span>操作日志</div>
+      <div class="nav-item" data-page="reports" onclick="navTo('reports',this)"><span class="icon">📈</span>报表导出</div>
+      <div class="nav-section"><div class="nav-section-title">系统</div></div>
+      <div class="nav-item" data-page="settings" onclick="navTo('settings',this)"><span class="icon">⚙️</span>系统设置</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info" onclick="navTo('settings')">
+        <div class="avatar" style="position:relative;overflow:hidden">
+          <img id="sidebarAvatarImg" src="/api/auth/avatar/${state.user?.id}" style="width:100%;height:100%;object-fit:cover;display:none" onerror="this.style.display='none'">
+          <div id="sidebarAvatarText">管</div>
+        </div>
+        <div><div class="name" id="sidebarName">张管理</div><div class="role" id="sidebarRole">耗材管理员</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="breadcrumb">🏠 首页 / <span id="breadcrumb">工作台</span></div>
+      <div class="spacer"></div>
+      <div class="topbar-action">
+        <button class="icon-btn" onclick="checkNotifications()">🔔<span class="dot" id="notifyDot"></span></button>
+      </div>
+      <div class="topbar-action">
+        <button class="icon-btn" onclick="navTo('settings')">👤</button>
+      </div>
+      <div class="topbar-action">
+        <button class="icon-btn" onclick="doLogout()" title="退出登录" style="font-size:18px">⏻</button>
+      </div>
+    </header>
+
+    <main class="main-content" id="mainContent">
+      <!-- Pages will be injected here -->
+    </main>
+  </div>
+</div>
+
+<!-- ═══ TOAST CONTAINER ═══ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ═══ MODAL ═══ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <h3 id="modalTitle">提示</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// API CONFIG
+// ═══════════════════════════════════════════
+const API_BASE = '';  // 同源部署，无需跨域
+const api = {
+  token: localStorage.getItem('token') || '',
+  async fetch(url, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...opts.headers };
+    if (api.token) headers['Authorization'] = `Bearer ${api.token}`;
+    const res = await fetch(API_BASE + url, { ...opts, headers });
+    if (res.status === 401) { api.token = ''; localStorage.removeItem('token'); document.getElementById('loginPage').classList.remove('hidden'); document.getElementById('appLayout').classList.remove('active'); throw new Error('登录已过期'); }
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || `HTTP ${res.status}`); }
+    return res.json();
+  },
+  get: url => api.fetch(url),
+  post: (url, data) => api.fetch(url, { method: 'POST', body: JSON.stringify(data) }),
+  put: (url, data) => api.fetch(url, { method: 'PUT', body: JSON.stringify(data) }),
+  del: url => api.fetch(url, { method: 'DELETE' }),
+};
+
+const state = {
+  user: null,
+  currentPage: 'dashboard',
+  sidebarOpen: false,
+};
+
+const users = {
+  admin: { name:'张管理', role:'耗材管理员', roleType:'admin', avatar:'管' },
+  teacher: { name:'李老师', role:'实验实训教师', roleType:'teacher', avatar:'李' },
+  approver: { name:'王主任', role:'系部负责人', roleType:'approver', avatar:'王' },
+};
+
+const breadcrumbs = {
+  dashboard:'工作台', inbound:'入库登记', inventory:'库存查询',
+  apply:'领用申请', approve:'审批管理', supplier:'供应商管理',
+  logs:'操作日志', reports:'报表导出', settings:'系统设置'
+};
+
+// ═══════════════════════════════════════════
+// LOGOUT
+// ═══════════════════════════════════════════
+function doLogout() {
+  api.token = '';
+  localStorage.removeItem('token');
+  document.getElementById('appLayout').classList.remove('active');
+  document.getElementById('loginPage').classList.remove('hidden');
+  showToast('已退出登录');
+}
+
+// ═══════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════
+async function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  if (!u || !p) { showToast('请输入用户名和密码','error'); return; }
+  try {
+    const res = await api.post('/api/auth/login', { username: u, password: p });
+    api.token = res.access_token;
+    localStorage.setItem('token', res.access_token);
+    state.user = { ...res.user, roleType: res.user.role, username: res.user.username, name: res.user.real_name, avatar: res.user.avatar_initials || res.user.real_name[0] };
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('appLayout').classList.add('active');
+    const sidebarImg = document.getElementById('sidebarAvatarImg');
+    if (sidebarImg) { sidebarImg.src = '/api/auth/avatar/' + state.user.id + '?t=' + Date.now(); }
+    document.getElementById('sidebarAvatarText').textContent = state.user.avatar;
+    document.getElementById('sidebarName').textContent = state.user.name;
+    document.getElementById('sidebarRole').textContent = {admin:'耗材管理员',teacher:'实验实训教师',approver:'系部负责人',sysadmin:'系统管理员'}[state.user.role] || '';
+    navTo('dashboard');
+    showToast(`欢迎回来，${state.user.name}`,'success');
+  } catch(e) {
+    showToast(e.message || '登录失败','error');
+  }
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function navTo(page, el) {
+  state.currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navItem = el || document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (navItem) navItem.classList.add('active');
+  document.getElementById('breadcrumb').textContent = breadcrumbs[page] || page;
+  renderPage(page);
+  if (window.innerWidth <= 768) closeSidebar();
+}
+
+function toggleSidebar() {
+  state.sidebarOpen = !state.sidebarOpen;
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if (state.sidebarOpen) { sb.classList.add('open'); ov.classList.add('show'); }
+  else { sb.classList.remove('open'); ov.classList.remove('show'); }
+}
+
+function closeSidebar() {
+  state.sidebarOpen = false;
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+// ─── 导出工具函数 ───
+function getDates(btn) {
+  // 从同一卡片中获取开始/结束日期
+  const card = btn.closest('.card-body');
+  const inputs = card.querySelectorAll('input[type="date"]');
+  const params = [];
+  if (inputs[0] && inputs[0].value) params.push(`start_date=${inputs[0].value}`);
+  if (inputs[1] && inputs[1].value) params.push(`end_date=${inputs[1].value}`);
+  return params.length ? '?' + params.join('&') : '';
+}
+
+async function exportExcel(url, params) {
+  try {
+    const token = localStorage.getItem('token');
+    const fullUrl = url + (params || '');
+    const resp = await fetch(fullUrl, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      showToast(err.detail || '导出失败', 'error');
+      return;
+    }
+    const blob = await resp.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const disposition = resp.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename\*=UTF-8''(.+)/);
+    a.download = match ? decodeURIComponent(match[1]) : 'export.xlsx';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('导出成功', 'success');
+  } catch (e) {
+    showToast('导出失败: ' + e.message, 'error');
+  }
+}
+
+function showToast(msg, type='success') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icons = {success:'✅',error:'❌',warning:'⚠️'};
+  t.innerHTML = `<span>${icons[type]||'📢'}</span> ${msg}`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='.3s'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+
+// ═══════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════
+function openModal(title, body, footer='') {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('modalFooter').innerHTML = footer;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════
+// PAGE RENDERER
+// ═══════════════════════════════════════════
+function renderPage(page) {
+  const mc = document.getElementById('mainContent');
+  switch(page) {
+    case 'dashboard': mc.innerHTML = pageDashboard(); initDashboardCharts(); break;
+    case 'inbound': mc.innerHTML = pageInbound(); initInboundHandlers(); break;
+    case 'inventory': mc.innerHTML = pageInventory(); initInventoryHandlers(); break;
+    case 'apply': mc.innerHTML = pageApply(); initApplyHandlers(); break;
+    case 'approve': mc.innerHTML = pageApprove(); initApproveHandlers(); break;
+    case 'supplier': mc.innerHTML = pageSupplier(); initSupplierHandlers(); break;
+    case 'logs': mc.innerHTML = pageLogs(); break;
+    case 'reports': mc.innerHTML = pageReports(); initReportHandlers(); break;
+    case 'settings': mc.innerHTML = pageSettings(); initSettingsHandlers(); break;
+  }
+}
+
+// ═══════════════════════════════════════════
+// PAGES
+// ═══════════════════════════════════════════
+
+function pageDashboard() {
+  // Async load data
+  setTimeout(async () => {
+    try {
+      const [stock, mats, pending] = await Promise.all([
+        api.get('/api/reports/stock'),
+        api.get('/api/materials?page_size=100'),
+        api.get('/api/requisitions?status=pending&page_size=1')
+      ]);
+      const lowItems = mats.items.filter(m => m.alert_status === 'low').length;
+      document.getElementById('stat-types').textContent = mats.total || mats.items.length;
+      document.getElementById('stat-value').textContent = '¥' + (stock.total_value || 0).toLocaleString();
+      document.getElementById('stat-alerts').textContent = lowItems;
+      // 更新审批角标
+      const pendingCount = pending.total || 0;
+      const badge = document.getElementById('approveBadge');
+      badge.textContent = pendingCount;
+      badge.style.display = pendingCount > 0 ? '' : 'none';
+      updateNotifyDot();
+      updateDashboardTables();
+    } catch(e) { console.warn('Dashboard API load failed:', e); }
+  }, 50);
+
+  return `
+<div class="page active">
+  <div class="page-title">📊 工作台</div>
+  <div class="page-subtitle">耗材管理概览 — 最后更新：${new Date().toLocaleString('zh-CN')}</div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-icon blue">📦</div><div><div class="stat-value" id="stat-types">—</div><div class="stat-label">耗材种类</div></div></div>
+    <div class="stat-card"><div class="stat-icon green">💰</div><div><div class="stat-value" id="stat-value">—</div><div class="stat-label">库存总价值</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange">⚠️</div><div><div class="stat-value" id="stat-alerts">—</div><div class="stat-label">库存预警项</div></div></div>
+    <div class="stat-card"><div class="stat-icon red">📋</div><div><div class="stat-value" id="stat-pending">—</div><div class="stat-label">待审批申请</div></div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-box"><h3>📈 消耗趋势</h3><canvas id="chartConsumption"></canvas></div>
+    <div class="chart-box"><h3>🍩 类别占比</h3><canvas id="chartCategory"></canvas></div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-header"><h3>📋 最近领用记录</h3><a href="#" onclick="navTo('apply');return false;" style="font-size:12px;color:var(--primary)">查看全部 →</a></div>
+    <div class="card-body no-padding"><div class="table-wrap" id="dashRecentOrders"><div style="padding:20px;color:var(--text-light);text-align:center">加载中...</div></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>⚠️ 库存预警</h3><a href="#" onclick="navTo('inventory');return false;" style="font-size:12px;color:var(--danger)">查看全部 →</a></div>
+    <div class="card-body no-padding"><div class="table-wrap" id="dashAlerts">${tableAlertStock()}</div></div>
+  </div>
+</div>`;
+}
+
+async function updateDashboardTables() {
+  try {
+    const reqs = await api.get('/api/requisitions?page_size=5');
+    if (reqs.items) {
+      document.getElementById('stat-pending').textContent = reqs.items.filter(r => r.status === 'pending').length;
+      document.getElementById('dashRecentOrders').innerHTML = `<table><thead><tr><th>申请编号</th><th>申请人</th><th>用途</th><th>金额</th><th>状态</th></tr></thead>
+      <tbody>${reqs.items.map(r => `<tr><td>${r.req_code}</td><td>${r.applicant_name}</td><td>${r.purpose}</td><td>¥${parseFloat(r.total_amount).toFixed(2)}</td><td><span class="badge badge-${r.status==='pending'?'warning':r.status==='approved'?'info':r.status==='signed'?'success':'info'}">${statusLabel(r.status)}</span></td></tr>`).join('')}</tbody></table>`;
+    }
+    // 库存预警 - 同时加载低库存和高库存
+    const [lowMats, highMats] = await Promise.all([
+      api.get('/api/materials?alert_status=low&page_size=10'),
+      api.get('/api/materials?alert_status=high&page_size=10')
+    ]);
+    const alertTbody = document.querySelector('#dashAlerts tbody');
+    if (!alertTbody) return;
+    const alertItems = [...(lowMats.items||[]), ...(highMats.items||[])];
+    if (alertItems.length > 0) {
+      alertTbody.innerHTML = alertItems.map(m => {
+        const isLow = m.alert_status === 'low';
+        return `<tr><td>${m.material_code}</td><td>${m.name} ${m.spec}</td>
+          <td class="${isLow?'text-danger':'text-warning'}">${m.stock_qty}${m.unit}</td><td>${isLow ? (m.safety_stock_min||'-') : (m.safety_stock_max||'-')}</td>
+          <td><span class="badge ${isLow?'badge-danger':'badge-warning'}">${isLow?'低库存':'高库存'}</span></td></tr>`;
+      }).join('');
+    } else {
+      alertTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px">暂无预警</td></tr>';
+    }
+    // 图表 - 用真实数据
+    updateDashboardCharts();
+  } catch(e) { console.warn('Dashboard update failed:', e); }
+}
+
+function statusLabel(s) {
+  const m = {draft:'草稿',pending:'待审批',approved:'已审批',rejected:'已驳回',returned:'退回',delivered:'已出库',signed:'已完成',returned_stock:'已归还'};
+  return m[s] || s;
+}
+
+function tableRecentOrders() {
+  const rows = [
+    ['LY202606150001','李老师','焊接材料','计算机网络实训','2卷','已签收','<span class="badge badge-success">已完成</span>'],
+    ['LY202606140003','赵老师','电子元器件','嵌入式竞赛集训','50个','已出库','<span class="badge badge-info">待签收</span>'],
+    ['LY202606140002','陈老师','连接线缆','物联网实训','30根','已签收','<span class="badge badge-success">已完成</span>'],
+    ['LY202606130001','李老师','开发板配件','Python课程实训','5套','已签收','<span class="badge badge-success">已完成</span>'],
+    ['LY202606120005','周老师','测试耗材','电子工艺实训','10套','待审批','<span class="badge badge-warning">待审批</span>'],
+  ];
+  return `<table><thead><tr><th>申请编号</th><th>申请人</th><th>耗材类别</th><th>用途</th><th>数量</th><th>状态</th><th>进度</th></tr></thead>
+  <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+function tableAlertStock() {
+  return `<table><thead><tr><th>耗材编号</th><th>名称规格</th><th>当前库存</th><th>安全下限</th><th>状态</th></tr></thead>
+  <tbody><tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:20px">加载中...</td></tr></tbody></table>`;
+}
+
+// ═══ DASHBOARD CHARTS ═══
+let _chartConsumption = null;
+let _chartCategory = null;
+
+function initDashboardCharts() {
+  setTimeout(() => {
+    const ctx1 = document.getElementById('chartConsumption');
+    const ctx2 = document.getElementById('chartCategory');
+    if (!ctx1 || !ctx2) return;
+    if (!_chartConsumption) {
+      _chartConsumption = new Chart(ctx1, { type:'bar', data:{labels:[],datasets:[]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}} });
+    }
+    if (!_chartCategory) {
+      _chartCategory = new Chart(ctx2, { type:'doughnut', data:{labels:[],datasets:[{data:[],backgroundColor:['#1F4E79','#2E75B6','#3498DB','#5DADE2','#85C1E9','#AED6F1','#D4E6F1','#BDC3C7']}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}} });
+    }
+  }, 100);
+}
+
+// 真实消耗趋势数据
+async function updateDashboardCharts() {
+  try {
+    const [mats, consumption] = await Promise.all([
+      api.get('/api/materials?page_size=100'),
+      api.get('/api/reports/consumption?months=6')
+    ]);
+    if (!mats.items || !_chartCategory) return;
+    // 类别占比
+    const catCount = {};
+    mats.items.forEach(m => {
+      const cat = (m.category_name || '其他') + '';
+      catCount[cat] = (catCount[cat] || 0) + 1;
+    });
+    const catNames = Object.keys(catCount).slice(0, 8);
+    _chartCategory.data.labels = catNames;
+    _chartCategory.data.datasets[0].data = catNames.map(k => catCount[k]);
+    _chartCategory.update();
+
+    // 消耗趋势 - 真实数据
+    if (consumption && _chartConsumption) {
+      _chartConsumption.data.labels = consumption.map(c => c.month);
+      _chartConsumption.data.datasets = [
+        { label: '领用次数', data: consumption.map(c => c.order_count), backgroundColor: '#2E75B6' },
+        { label: '金额(元)', data: consumption.map(c => c.total_amount), backgroundColor: '#E74C3C', yAxisID: 'y1' }
+      ];
+      _chartConsumption.update();
+    }
+  } catch(e) { console.warn('Chart update:', e); }
+}
+
+// ═══ PAGE: INBOUND ═══
+function pageInbound() {
+  return `
+<div class="page active">
+  <div class="page-title">📥 耗材入库登记</div>
+  <div class="page-subtitle">登记新采购到货的耗材信息，生成入库记录</div>
+
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-header"><h3>入库信息填写</h3></div>
+    <div class="card-body">
+      <div class="form-grid col-3">
+        <div class="form-group"><label>耗材名称 <span class="req">*</span></label><input type="text" id="ibName" placeholder="如：杜邦线 公对母"></div>
+        <div class="form-group"><label>规格型号 <span class="req">*</span></label><input type="text" id="ibSpec" placeholder="如：20cm/40pin"></div>
+        <div class="form-group"><label>耗材类别 <span class="req">*</span></label><select id="ibCategory">${categoryOptions()}</select></div>
+        <div class="form-group"><label>计量单位 <span class="req">*</span></label><select id="ibUnit"><option>个</option><option>根</option><option>米</option><option>卷</option><option>套</option><option>包</option><option>箱</option></select></div>
+        <div class="form-group"><label>入库数量 <span class="req">*</span></label><input type="number" id="ibQty" placeholder="0" min="1"></div>
+        <div class="form-group"><label>入库单价（元）<span class="req">*</span></label><input type="number" id="ibPrice" placeholder="0.00" step="0.01" min="0"></div>
+        <div class="form-group"><label>供应商 <span class="req">*</span></label><select id="ibSupplier">${supplierOptions()}</select></div>
+        <div class="form-group"><label>采购批次号 <span class="req">*</span></label><input type="text" id="ibBatch" placeholder="如：PO20260615-001"></div>
+        <div class="form-group"><label>采购日期</label><input type="date" id="ibDate"></div>
+        <div class="form-group"><label>存放位置 <span class="req">*</span></label><input type="text" id="ibLocation" placeholder="如：A栋302-实验柜2-第1层"></div>
+        <div class="form-group"><label>经费来源</label><input type="text" id="ibFund" placeholder="如：2026年度实训耗材专项经费"></div>
+        <div class="form-group full"><label>备注</label><textarea id="ibRemark" rows="2" placeholder="其他补充信息"></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="submitInbound()">✅ 确认入库</button>
+        <button class="btn btn-outline" onclick="resetInbound()">🔄 重置表单</button>
+        <button class="btn btn-ghost" onclick="showToast('草稿已保存','success')">💾 保存草稿</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>📋 最近入库记录</h3></div>
+    <div class="card-body no-padding"><div class="table-wrap">${tableRecentInbound()}</div></div>
+  </div>
+</div>`;
+}
+
+function categoryOptions() {
+  return ['电子元器件','焊接材料','连接线缆','开发板配件','测试耗材','打印耗材','实训工具','其他'].map(c=>`<option>${c}</option>`).join('');
+}
+
+function supplierOptions() {
+  return ['深圳华强电子科技有限公司','南京鼎盛仪器有限公司','合肥科仪商贸有限公司','北京中发电子市场','广州天河电子城'].map(s=>`<option>${s}</option>`).join('');
+}
+
+function tableRecentInbound() {
+  const rows = [
+    ['RK202606150001','杜邦线 公对母','20cm/40pin','500根','¥150.00',formatDate(new Date()),'张管理'],
+    ['RK202606140003','STM32F407开发板','V3.0','20块','¥3,600.00',formatDate(new Date(Date.now()-864e5)),'张管理'],
+    ['RK202606140002','面包板','830孔','100块','¥500.00',formatDate(new Date(Date.now()-864e5)),'张管理'],
+    ['RK202606130001','电阻套件','1/4W 30种','10套','¥80.00',formatDate(new Date(Date.now()-1728e5)),'张管理'],
+  ];
+  return `<table><thead><tr><th>入库单号</th><th>耗材名称</th><th>规格型号</th><th>数量</th><th>金额</th><th>日期</th><th>操作人</th></tr></thead>
+  <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+// 缓存类别和供应商的 name→id 映射
+let _catMap = {};
+let _supMap = {};
+
+async function loadInboundMaps() {
+  try {
+    const cats = await api.get('/api/materials?page_size=1'); // trigger first to get session
+    _catMap = {}; _supMap = {};
+    // Load suppliers for map
+    const sups = await api.get('/api/suppliers?page_size=100');
+    (sups.items||[]).forEach(s => { _supMap[s.name] = s.id; });
+    // Use fixed category IDs matching seed data
+    _catMap = {'电子元器件':1,'焊接材料':2,'连接线缆':3,'开发板配件':4,'测试耗材':5,'打印耗材':6,'实训工具':7,'其他':8};
+  } catch(e) { console.warn('Map load failed:', e); }
+}
+
+async function submitInbound() {
+  const fields = ['ibName','ibSpec','ibQty','ibPrice'];
+  for (const id of fields) {
+    const el = document.getElementById(id);
+    if (!el || !el.value) { showToast('请填写必填字段','error'); if(el) el.focus(); return; }
+  }
+  try {
+    const matName = document.getElementById('ibName').value;
+    const matSpec = document.getElementById('ibSpec').value;
+    const catName = document.getElementById('ibCategory')?.value || '电子元器件';
+    const supName = document.getElementById('ibSupplier')?.value || '';
+    const catId = _catMap[catName] || 1;
+    const supId = _supMap[supName] || (Object.values(_supMap)[0]) || 1;
+
+    // Check if material exists
+    let matId = null;
+    const mats = await api.get(`/api/materials?keyword=${encodeURIComponent(matName)}&page_size=10`);
+    if (mats.items) {
+      const found = mats.items.find(m => m.name === matName && m.spec === matSpec);
+      if (found) matId = found.id;
+    }
+
+    // Create material if not found
+    if (!matId) {
+      const newMat = await api.post('/api/materials', {
+        name: matName, spec: matSpec, category_id: catId,
+        unit: document.getElementById('ibUnit').value,
+        unit_price: parseFloat(document.getElementById('ibPrice').value) || 0,
+        location: document.getElementById('ibLocation')?.value || '',
+        supplier_id: supId,
+        fund_source: document.getElementById('ibFund')?.value || '',
+        remark: document.getElementById('ibRemark')?.value || ''
+      });
+      matId = newMat.material_id || newMat.id;
+      if (!matId) {
+        // Retry: search again
+        const retry = await api.get(`/api/materials?keyword=${encodeURIComponent(matName)}&page_size=10`);
+        const found = (retry.items||[]).find(m => m.name === matName && m.spec === matSpec);
+        matId = found?.id;
+      }
+      if (!matId) { showToast('耗材创建失败，请重试','error'); return; }
+    }
+
+    // Create inbound record
+    await api.post('/api/inbound-records', {
+      material_id: matId,
+      batch_no: document.getElementById('ibBatch')?.value || ('PO' + new Date().toISOString().slice(0,10).replace(/-/g,'')),
+      quantity: parseInt(document.getElementById('ibQty').value),
+      unit_price: parseFloat(document.getElementById('ibPrice').value),
+      supplier_id: supId,
+      purchase_date: document.getElementById('ibDate')?.value || new Date().toISOString().slice(0,10),
+      fund_source: document.getElementById('ibFund')?.value || '',
+      remark: document.getElementById('ibRemark')?.value || ''
+    });
+    showToast('入库成功！','success');
+    resetInbound();
+  } catch(e) {
+    showToast('入库失败：' + e.message, 'error');
+  }
+}
+
+function resetInbound() {
+  ['ibName','ibSpec','ibQty','ibPrice','ibBatch','ibDate','ibLocation','ibFund','ibRemark'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+function initInboundHandlers() {
+  document.getElementById('ibDate').value = new Date().toISOString().slice(0,10);
+  loadInboundMaps();
+}
+
+// ═══ PAGE: INVENTORY ═══
+function pageInventory() {
+  setTimeout(() => loadInventory(), 50);
+  return `
+<div class="page active">
+  <div class="page-title">📋 库存查询</div>
+  <div class="page-subtitle">实时查看耗材库存状态，支持多维度筛选和导出</div>
+  <div class="toolbar">
+    <div class="search-box"><span class="sicon">🔍</span><input type="text" id="invSearch" placeholder="搜索耗材名称/编号/规格..." oninput="loadInventory()"></div>
+    <select id="invCategory" onchange="loadInventory()"><option value="">全部类别</option>${categoryOptions()}</select>
+    <select id="invAlert" onchange="loadInventory()"><option value="">全部状态</option><option value="low">低库存预警</option><option value="high">高库存预警</option><option value="normal">正常</option></select>
+    <button class="btn btn-outline btn-sm" onclick="showToast('盘点任务已生成','success')">📋 生成盘点</button>
+  </div>
+  <div class="card"><div class="card-body no-padding"><div class="table-wrap" id="inventoryTable"><p style="padding:20px;color:var(--text-light)">加载中...</p></div></div></div>
+</div>`;
+}
+
+async function loadInventory() {
+  const kw = document.getElementById('invSearch')?.value || '';
+  const cat = document.getElementById('invCategory')?.value || '';
+  const alert = document.getElementById('invAlert')?.value || '';
+  try {
+    let params = 'page_size=50';
+    if (kw) params += '&keyword=' + encodeURIComponent(kw);
+    if (cat) {
+      const catMap = {'电子元器件':1,'焊接材料':2,'连接线缆':3,'开发板配件':4,'测试耗材':5,'打印耗材':6,'实训工具':7,'其他':8};
+      if (catMap[cat]) params += '&category_id=' + catMap[cat];
+    }
+    if (alert) params += '&alert_status=' + alert;
+    const res = await api.get('/api/materials?' + params);
+    const items = res.items || [];
+    document.getElementById('inventoryTable').innerHTML = `<table><thead><tr><th>编号</th><th>名称</th><th>规格</th><th>类别</th><th>库存</th><th>单价</th><th>位置</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${items.map(m => `<tr>
+      <td>${m.material_code}</td><td><strong>${m.name}</strong></td><td>${m.spec}</td><td>${m.category_name||'-'}</td>
+      <td class="${m.alert_status==='low'?'text-danger':m.alert_status==='high'?'':'font-weight:600'}">${m.stock_qty} ${m.unit}</td>
+      <td>¥${parseFloat(m.unit_price).toFixed(2)}</td><td>${m.location}</td>
+      <td>${m.alert_status==='low'?'<span class="badge badge-danger">低库存</span>':m.alert_status==='high'?'<span class="badge badge-warning">高库存</span>':'<span class="badge badge-success">正常</span>'}</td>
+      <td><div class="btn-group"><button class="btn btn-ghost btn-xs" onclick="openAdjustModal(${m.id},'${m.name}')">调整</button></div></td>
+    </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:20px">暂无数据</td></tr>'}</tbody></table>`;
+  } catch(e) {
+    document.getElementById('inventoryTable').innerHTML = `<p style="padding:20px;color:var(--danger)">加载失败：${e.message}</p>`;
+  }
+}
+
+function tableInventory(filter='') {
+  const data = [
+    {id:'HC20250103',name:'焊锡丝 0.8mm',spec:'0.8mm/500g',cat:'焊接材料',qty:5,limit:20,price:'30.00',loc:'A栋302-柜1-层2'},
+    {id:'HC20250218',name:'STM32F407开发板',spec:'V3.0 ARM',cat:'开发板配件',qty:3,limit:15,price:'180.00',loc:'A栋302-柜3-层1'},
+    {id:'HC20250401',name:'杜邦线 公对母',spec:'20cm/40pin',cat:'连接线缆',qty:200,limit:500,price:'0.30',loc:'A栋302-柜2-层3'},
+    {id:'HC20240115',name:'电阻 1KΩ',spec:'1/4W ±5%',cat:'电子元器件',qty:1200,limit:500,price:'0.02',loc:'A栋302-柜1-层1'},
+    {id:'HC20250310',name:'电容 100μF',spec:'25V 铝电解',cat:'电子元器件',qty:800,limit:200,price:'0.15',loc:'A栋302-柜1-层1'},
+    {id:'HC20241205',name:'打印纸 A4',spec:'70g/500张',cat:'打印耗材',qty:2,limit:10,price:'25.00',loc:'B栋101-储物间'},
+    {id:'HC20250510',name:'面包板 830孔',spec:'16.5x5.5cm',cat:'实训工具',qty:45,limit:10,price:'5.00',loc:'A栋302-柜2-层2'},
+    {id:'HC20250601',name:'网线水晶头',spec:'RJ45超五类',cat:'连接线缆',qty:350,limit:100,price:'0.50',loc:'A栋302-柜2-层3'},
+  ];
+  let rows = data;
+  if (filter) rows = rows.filter(r => r.name.includes(filter) || r.id.includes(filter));
+  return `<table><thead><tr><th>编号</th><th>名称</th><th>规格型号</th><th>类别</th><th>库存数量</th><th>安全下限</th><th>单价</th><th>位置</th><th>状态</th><th>操作</th></tr></thead>
+  <tbody>${rows.map(r=>`<tr>
+    <td>${r.id}</td><td><strong>${r.name}</strong></td><td>${r.spec}</td><td>${r.cat}</td>
+    <td>${r.qty < r.limit ? `<span class="text-danger">${r.qty}</span>` : r.qty > r.limit*4 ? `<span style="color:var(--warning);font-weight:600">${r.qty}</span>` : r.qty}</td>
+    <td>${r.limit}</td><td>¥${r.price}</td><td>${r.loc}</td>
+    <td>${r.qty < r.limit ? '<span class="badge badge-danger">低库存</span>' : r.qty > r.limit*4 ? '<span class="badge badge-warning">高库存</span>' : '<span class="badge badge-success">正常</span>'}</td>
+    <td><div class="btn-group"><button class="btn btn-ghost btn-xs" onclick="showToast('耗材详情','success')">详情</button><button class="btn btn-ghost btn-xs" onclick="openAdjustModal('${r.id}','${r.name}')">调整</button></div></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+function filterInventory() {
+  const q = document.getElementById('invSearch')?.value || '';
+  document.getElementById('inventoryTable').innerHTML = tableInventory(q);
+}
+
+function openAdjustModal(id, name) {
+  openModal('库存调整 — ' + name,
+    `<div class="form-group"><label>调整数量 <span class="req">*</span></label><input type="number" id="adjQty" placeholder="正数增加，负数减少"></div>
+     <div class="form-group" style="margin-top:12px"><label>调整原因 <span class="req">*</span></label><textarea id="adjReason" rows="2" placeholder="如：盘点差异、损耗报废"></textarea></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="closeModal();showToast('库存调整成功','success')">确认调整</button>`
+  );
+}
+
+function initInventoryHandlers() {}
+
+// ═══ PAGE: APPLY ═══
+function pageApply() {
+  return `
+<div class="page active">
+  <div class="page-title">📝 领用申请</div>
+  <div class="page-subtitle">选择需要领用的耗材，填写用途信息后提交审批</div>
+
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-header"><h3>新建领用申请</h3></div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>用途说明 <span class="req">*</span></label><input type="text" id="apPurpose" placeholder="如：计算机网络实训课程 / 嵌入式技能竞赛集训"></div>
+        <div class="form-group"><label>预计使用日期</label><input type="date" id="apDate"></div>
+        <div class="form-group"><label>备注</label><input type="text" placeholder="其他说明"></div>
+      </div>
+
+      <div style="margin-top:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h4 style="font-size:14px">领用明细</h4>
+          <button class="btn btn-outline btn-sm" onclick="addApplyItem()">+ 添加耗材</button>
+        </div>
+        <div class="table-wrap">
+          <table id="applyItemTable">
+            <thead><tr><th>耗材名称</th><th>规格型号</th><th>可用库存</th><th>申请数量</th><th>操作</th></tr></thead>
+            <tbody id="applyItems">
+              <tr>
+                <td>
+                  <div class="mat-select-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" placeholder="搜索耗材名称..." oninput="filterMaterialOptions(this)">
+                    <select onchange="onMaterialSelect(this)"><option value="">— 请选择耗材 —</option></select>
+                  </div>
+                </td>
+                <td><input type="text" style="width:120px;padding:6px" placeholder="选择后自动填入" readonly></td>
+                <td><span style="font-weight:600">—</span></td>
+                <td><input type="number" style="width:80px;padding:6px" value="1" min="1"></td>
+                <td><button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="this.closest('tr').remove()">✕</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="submitApply()">📤 提交申请</button>
+        <button class="btn btn-outline" onclick="showToast('草稿已保存','success')">💾 保存草稿</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>📋 我的申请记录</h3></div>
+    <div class="card-body no-padding"><div class="table-wrap">
+      <table><thead><tr><th>申请编号</th><th>用途</th><th>明细</th><th>金额</th><th>申请日期</th><th>状态</th></tr></thead>
+      <tbody id="myApplications"><tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:20px">加载中...</td></tr></tbody></table>
+    </div></div>
+  </div>
+</div>`;
+}
+
+async function loadMyApplications() {
+  try {
+    const r = await api.get('/api/requisitions?page_size=20');
+    const items = r.items || [];
+    const tbody = document.getElementById('myApplications');
+    if (!tbody) return;
+    tbody.innerHTML = items.map(r => `<tr>
+      <td>${r.req_code}</td><td>${r.purpose}</td>
+      <td>${(r.items||[]).map(it => it.material_name + ' x' + it.req_quantity).join(', ')}</td>
+      <td>¥${parseFloat(r.total_amount).toFixed(2)}</td>
+      <td>${r.created_at?.slice(0,10)}</td>
+      <td><span class="badge badge-${r.status==='pending'?'warning':r.status==='rejected'?'danger':r.status==='approved'?'info':'success'}">${statusLabel(r.status)}</span></td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:16px">暂无申请记录</td></tr>';
+  } catch(e) { console.warn('My applications load failed:', e); }
+}
+
+// 缓存耗材列表（name -> {id, spec, stock, unit}）
+let _materialCache = [];
+
+async function loadMaterialCache() {
+  try {
+    const r = await api.get('/api/materials?page_size=100');
+    _materialCache = (r.items || []).map(m => ({
+      id: m.id, name: m.name, spec: m.spec,
+      stock: m.stock_qty, unit: m.unit, price: m.unit_price
+    }));
+  } catch(e) { _materialCache = []; }
+}
+
+function materialOptions() {
+  return _materialCache.map(m => `<option value="${m.name}" data-id="${m.id}" data-spec="${m.spec}" data-stock="${m.stock}" data-unit="${m.unit}">${m.name}（库存: ${m.stock}${m.unit}）</option>`).join('');
+}
+
+function addApplyItem() {
+  const tbody = document.getElementById('applyItems');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>
+      <div class="mat-select-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="搜索耗材名称..." oninput="filterMaterialOptions(this)">
+        <select onchange="onMaterialSelect(this)">${materialOptions()}</select>
+      </div>
+    </td>
+    <td><input type="text" style="width:120px;padding:6px" placeholder="规格" readonly></td>
+    <td><span style="font-weight:600">—</span></td>
+    <td><input type="number" style="width:80px;padding:6px" value="1" min="1"></td>
+    <td><button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="this.closest('tr').remove()">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  // 触发默认选中项的规格填充
+  const sel = tr.querySelector('select');
+  if (sel) onMaterialSelect(sel);
+}
+
+function filterMaterialOptions(input) {
+  const kw = input.value.toLowerCase();
+  const sel = input.parentElement.querySelector('select');
+  if (!sel) return;
+  // 重新加载全部选项
+  sel.innerHTML = '<option value="">— 请选择耗材 —</option>' + materialOptions();
+  if (kw) {
+    sel.querySelectorAll('option').forEach(o => {
+      if (o.value && !o.textContent.toLowerCase().includes(kw)) o.style.display = 'none';
+    });
+  }
+}
+
+function onMaterialSelect(sel) {
+  const opt = sel.selectedOptions[0];
+  const tr = sel.closest('tr');
+  const specInput = tr.querySelectorAll('input')[0];
+  const stockSpan = tr.querySelector('span[style]');
+  if (opt && specInput) {
+    specInput.value = opt.dataset.spec || '';
+    if (stockSpan && opt.dataset.stock) {
+      stockSpan.textContent = opt.dataset.stock + ' ' + (opt.dataset.unit || '');
+    }
+  }
+}
+
+async function submitApply() {
+  const purpose = document.getElementById('apPurpose')?.value;
+  if (!purpose) { showToast('请填写用途说明','error'); return; }
+  const tbody = document.getElementById('applyItems');
+  if (!tbody) return;
+  const rows = tbody.querySelectorAll('tr');
+  const items = [];
+  const matNameMap = {};
+  // Build material map
+  try {
+    const mats = await api.get('/api/materials?page_size=100');
+    (mats.items || []).forEach(m => { matNameMap[m.name] = m.id; });
+  } catch(e) {}
+  for (const row of rows) {
+    const sel = row.querySelector('select')?.value;
+    const qty = row.querySelector('input[type="number"]')?.value;
+    if (sel && qty && parseInt(qty) > 0) {
+      const mid = matNameMap[sel];
+      if (mid) items.push({ material_id: mid, req_quantity: parseInt(qty) });
+    }
+  }
+  if (items.length === 0) { showToast('请至少添加一项耗材明细','error'); return; }
+  try {
+    await api.post('/api/requisitions', {
+      purpose, items,
+      use_date: document.getElementById('apDate')?.value || null
+    });
+    showToast('领用申请已提交，请等待审批','success');
+    // 实时更新审批角标
+    updateApproveBadge();
+  } catch(e) {
+    showToast('提交失败：' + e.message, 'error');
+  }
+}
+
+async function initApplyHandlers() {
+  const el = document.getElementById('apDate');
+  if (el) el.value = new Date().toISOString().slice(0,10);
+  // 加载耗材列表并填充下拉框
+  await loadMaterialCache();
+  document.querySelectorAll('#applyItems select').forEach(sel => {
+    sel.innerHTML = '<option value="">— 请选择耗材 —</option>' + materialOptions();
+  });
+  // 加载我的申请记录
+  loadMyApplications();
+}
+
+// ═══ PAGE: APPROVE ═══
+function pageApprove() {
+  setTimeout(() => loadPendingApprovals(), 50);
+  return `
+<div class="page active">
+  <div class="page-title">✅ 审批管理</div>
+  <div class="page-subtitle">审核教师的领用申请 & 确认出库</div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(this,'pending')">待审批</button>
+    <button class="tab-btn" onclick="switchTab(this,'delivery');loadDeliveryList()">待出库</button>
+    <button class="tab-btn" onclick="switchTab(this,'done');loadDoneApprovals()">已完成</button>
+  </div>
+  <div class="tab-content active" id="tab-pending"><p style="color:var(--text-light);padding:20px">加载中...</p></div>
+  <div class="tab-content" id="tab-delivery"><p style="color:var(--text-light);padding:20px">点击"待出库"加载数据</p></div>
+  <div class="tab-content" id="tab-done"><p style="color:var(--text-light);padding:20px">点击"已完成"加载数据</p></div>
+</div>`;
+}
+
+async function loadDeliveryList() {
+  try {
+    const res = await api.get('/api/requisitions?status=approved&page_size=20');
+    const items = res.items || [];
+    document.getElementById('tab-delivery').innerHTML = `<div class="card"><div class="card-body no-padding"><div class="table-wrap">
+      <table><thead><tr><th>申请编号</th><th>申请人</th><th>用途</th><th>明细</th><th>金额</th><th>日期</th><th>操作</th></tr></thead>
+      <tbody>${items.map(r => `<tr>
+        <td>${r.req_code}</td><td>${r.applicant_name}</td><td>${r.purpose}</td>
+        <td>${(r.items||[]).map(it => it.material_name + ' x' + it.req_quantity).join(', ')}</td>
+        <td>¥${parseFloat(r.total_amount).toFixed(2)}</td><td>${r.created_at?.slice(0,10)}</td>
+        <td><button class="btn btn-primary btn-sm deliver-btn" data-reqid="${r.id}" data-items='${JSON.stringify((r.items||[]).map(it => ({item_id:it.item_id, actual_qty:it.req_quantity})))}'>📦 确认出库</button></td>
+      </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-light);padding:20px">暂无待出库申请</td></tr>'}</tbody></table>
+    </div></div></div>`;
+    // 绑定出库按钮事件
+    document.querySelectorAll('#tab-delivery .deliver-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const reqId = parseInt(this.dataset.reqid);
+        const items = JSON.parse(this.dataset.items);
+        deliverAction(reqId, items);
+      });
+    });
+  } catch(e) { console.warn(e); }
+}
+
+async function deliverAction(reqId, items) {
+  try {
+    await api.put(`/api/approvals/${reqId}/deliver`, { items });
+    showToast('出库完成！库存已扣减', 'success');
+    loadDeliveryList();
+  } catch(e) { showToast('出库失败：' + e.message, 'error'); }
+}
+
+async function signAction(reqId) {
+  try {
+    await api.put(`/api/approvals/${reqId}/sign`);
+    showToast('签收成功', 'success');
+    loadDoneApprovals();
+  } catch(e) { showToast('签收失败：' + e.message, 'error'); }
+}
+
+async function loadDoneApprovals() {
+  try {
+    const d1 = await api.get('/api/requisitions?status=signed&page_size=20');
+    const d2 = await api.get('/api/requisitions?status=returned_stock&page_size=20');
+    const all = [...(d1.items||[]), ...(d2.items||[])];
+    document.getElementById('tab-done').innerHTML = `<div class="card"><div class="card-body no-padding"><div class="table-wrap">
+      <table><thead><tr><th>申请编号</th><th>申请人</th><th>用途</th><th>金额</th><th>状态</th><th>日期</th></tr></thead>
+      <tbody>${all.map(r => `<tr>
+        <td>${r.req_code}</td><td>${r.applicant_name}</td><td>${r.purpose}</td>
+        <td>¥${parseFloat(r.total_amount).toFixed(2)}</td>
+        <td><span class="badge badge-${r.status==='signed'?'success':'info'}">${statusLabel(r.status)}</span></td>
+        <td>${r.created_at?.slice(0,10)}</td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:20px">暂无记录</td></tr>'}</tbody></table>
+    </div></div></div>`;
+  } catch(e) { console.warn(e); }
+}
+
+function tablePendingApprovals() {
+  const items = [
+    {id:'LY202606150001',user:'李老师',purpose:'计算机网络实训',items:'杜邦线 30根、焊锡丝 2卷',amount:'¥69.00',date:'2026-06-15'},
+    {id:'LY202606150002',user:'赵老师',purpose:'嵌入式竞赛集训',items:'STM32开发板 5块、电阻套件 2套',amount:'¥1,060.00',date:'2026-06-15'},
+    {id:'LY202606140001',user:'陈老师',purpose:'物联网实训',items:'网线 50米、水晶头 100个',amount:'¥165.00',date:'2026-06-14'},
+  ];
+  return `<table><thead><tr><th>申请编号</th><th>申请人</th><th>用途</th><th>耗材明细</th><th>金额</th><th>日期</th><th>操作</th></tr></thead>
+  <tbody>${items.map(i=>`<tr>
+    <td>${i.id}</td><td>${i.user}</td><td>${i.purpose}</td><td>${i.items}</td><td>¥${i.amount}</td><td>${i.date}</td>
+    <td><div class="btn-group">
+      <button class="btn btn-success btn-sm" onclick="approveAction('${i.id}','approve')">同意</button>
+      <button class="btn btn-danger btn-sm" onclick="approveAction('${i.id}','reject')">驳回</button>
+      <button class="btn btn-ghost btn-sm" onclick="showToast('申请已退回修改','warning')">退回</button>
+    </div></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+function tableDoneApprovals() {
+  const rows = [
+    ['LY202606140002','李老师','嵌入式竞赛集训','50个','¥137.50','已审批','2026-06-14'],
+    ['LY202606130001','赵老师','Python课程实训','5套','¥900.00','已审批','2026-06-13'],
+    ['LY202606100004','陈老师','物联网实训','20根','¥100.00','已审批','2026-06-10'],
+  ];
+  return `<table><thead><tr><th>申请编号</th><th>申请人</th><th>用途</th><th>数量</th><th>金额</th><th>状态</th><th>日期</th></tr></thead>
+  <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+function switchTab(btn, tab) {
+  btn.parentElement.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+async function approveAction(id, action) {
+  try {
+    await api.put(`/api/approvals/${id}/review`, { action, comment: action === 'approve' ? '同意' : action === 'reject' ? '驳回' : '退回修改' });
+    const msg = action==='approve' ? '审批通过！请在「待出库」中确认出库' : action==='reject' ? '申请已驳回' : '已退回修改';
+    showToast(msg, action==='approve'?'success':'warning');
+    updateApproveBadge();
+    loadPendingApprovals();
+  } catch(e) { showToast('操作失败：' + e.message, 'error'); }
+}
+
+async function checkNotifications() {
+  try {
+    const r = await api.get('/api/requisitions?status=pending&page_size=1');
+    const count = r.total || 0;
+    if (count > 0) {
+      showToast(`您有 ${count} 条待审批申请`, 'warning');
+    } else {
+      showToast('暂无新通知', 'success');
+    }
+    updateNotifyDot();
+  } catch(e) { showToast('获取通知失败', 'error'); }
+}
+
+async function updateNotifyDot() {
+  try {
+    const r = await api.get('/api/requisitions?status=pending&page_size=1');
+    const dot = document.getElementById('notifyDot');
+    if (dot) dot.style.display = (r.total || 0) > 0 ? '' : 'none';
+  } catch(e) {}
+}
+
+async function updateApproveBadge() {
+  try {
+    const r = await api.get('/api/requisitions?status=pending&page_size=1');
+    const count = r.total || 0;
+    const badge = document.getElementById('approveBadge');
+    if (badge) {
+      badge.textContent = count;
+      badge.style.display = count > 0 ? '' : 'none';
+    }
+  } catch(e) {}
+}
+
+async function loadPendingApprovals() {
+  try {
+    const res = await api.get('/api/requisitions?status=pending&page_size=20');
+    const items = res.items || [];
+    document.getElementById('tab-pending').innerHTML = `<div class="card"><div class="card-body no-padding"><div class="table-wrap">
+      <table><thead><tr><th>申请编号</th><th>申请人</th><th>用途</th><th>金额</th><th>日期</th><th>操作</th></tr></thead>
+      <tbody>${items.map(i => `<tr><td>${i.req_code}</td><td>${i.applicant_name}</td><td>${i.purpose}</td><td>¥${parseFloat(i.total_amount).toFixed(2)}</td><td>${i.created_at?.slice(0,10)}</td>
+        <td><div class="btn-group">
+          <button class="btn btn-success btn-sm" onclick="approveAction(${i.id},'approve')">同意</button>
+          <button class="btn btn-danger btn-sm" onclick="approveAction(${i.id},'reject')">驳回</button>
+          <button class="btn btn-ghost btn-sm" onclick="approveAction(${i.id},'return')">退回</button>
+        </div></td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:20px">暂无待审批申请</td></tr>'}</tbody></table>
+    </div></div></div>`;
+    document.getElementById('approveBadge').textContent = items.length;
+    if (items.length === 0) document.getElementById('approveBadge').style.display = 'none';
+    else document.getElementById('approveBadge').style.display = '';
+  } catch(e) { console.warn('Load pending approvals failed:', e); }
+}
+
+function initApproveHandlers() {}
+
+// ═══ PAGE: SUPPLIER ═══
+function pageSupplier() {
+  setTimeout(() => loadSuppliers(), 50);
+  return `
+<div class="page active">
+  <div class="page-title">🏭 供应商管理</div>
+  <div class="page-subtitle">维护耗材供应商信息和供货记录</div>
+  <div class="toolbar">
+    <div class="search-box"><span class="sicon">🔍</span><input type="text" placeholder="搜索供应商名称..." id="supSearch" oninput="loadSuppliers()"></div>
+    <button class="btn btn-primary btn-sm" onclick="openSupplierModal()">+ 新增供应商</button>
+  </div>
+  <div class="card"><div class="card-body no-padding"><div class="table-wrap" id="supplierTable"><p style="padding:20px;color:var(--text-light)">加载中...</p></div></div></div>
+</div>`;
+}
+
+async function loadSuppliers() {
+  try {
+    const kw = document.getElementById('supSearch')?.value || '';
+    const res = await api.get('/api/suppliers?page_size=50' + (kw ? '&keyword=' + encodeURIComponent(kw) : ''));
+    const items = res.items || [];
+    document.getElementById('supplierTable').innerHTML = `<table><thead><tr><th>供应商名称</th><th>联系人</th><th>电话</th><th>合作状态</th><th>供货次数</th><th>累计金额</th><th>操作</th></tr></thead>
+    <tbody>${items.map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.contact_person}</td><td>${s.contact_phone}</td><td>${s.coop_status==='active'?'<span class="badge badge-success">合作中</span>':'<span class="badge badge-default">已停用</span>'}</td><td>${s.order_count||0}</td><td>¥${(s.total_amount||0).toLocaleString()}</td><td><div class="btn-group"><button class="btn btn-ghost btn-xs" onclick="showToast('编辑功能开发中','warning')">编辑</button></div></td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-light);padding:20px">暂无数据</td></tr>'}</tbody></table>`;
+  } catch(e) { document.getElementById('supplierTable').innerHTML = `<p style="padding:20px;color:var(--danger)">${e.message}</p>`; }
+}
+
+function tableSuppliers() {
+  const data = [
+    {name:'深圳华强电子科技有限公司',contact:'王经理',phone:'0755-8888XXXX',status:'合作中',orders:47,amount:'¥128,500'},
+    {name:'南京鼎盛仪器有限公司',contact:'刘经理',phone:'025-6666XXXX',status:'合作中',orders:32,amount:'¥95,200'},
+    {name:'合肥科仪商贸有限公司',contact:'赵经理',phone:'0551-7777XXXX',status:'合作中',orders:21,amount:'¥62,800'},
+    {name:'北京中发电子市场',contact:'孙经理',phone:'010-9999XXXX',status:'已停用',orders:5,amount:'¥3,500'},
+  ];
+  return `<table><thead><tr><th>供应商名称</th><th>联系人</th><th>电话</th><th>合作状态</th><th>供货次数</th><th>累计金额</th><th>操作</th></tr></thead>
+  <tbody>${data.map(s=>`<tr>
+    <td><strong>${s.name}</strong></td><td>${s.contact}</td><td>${s.phone}</td>
+    <td>${s.status==='合作中'?'<span class="badge badge-success">合作中</span>':'<span class="badge badge-default">已停用</span>'}</td>
+    <td>${s.orders}</td><td>${s.amount}</td>
+    <td><div class="btn-group">
+      <button class="btn btn-ghost btn-xs" onclick="openSupplierModal()">编辑</button>
+      <button class="btn btn-ghost btn-xs" onclick="showToast('评价已保存','success')">评价</button>
+    </div></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+function openSupplierModal() {
+  openModal('供应商信息',
+    `<div class="form-grid">
+      <div class="form-group full"><label>供应商名称 <span class="req">*</span></label><input type="text" placeholder="单位全称"></div>
+      <div class="form-group"><label>统一社会信用代码</label><input type="text" placeholder="18位代码"></div>
+      <div class="form-group"><label>联系人 <span class="req">*</span></label><input type="text"></div>
+      <div class="form-group"><label>联系电话 <span class="req">*</span></label><input type="text"></div>
+      <div class="form-group full"><label>地址</label><input type="text"></div>
+      <div class="form-group full"><label>经营范围</label><textarea rows="2"></textarea></div>
+      <div class="form-group"><label>合作状态</label><select><option>合作中</option><option>已停用</option></select></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="closeModal();showToast('供应商信息已保存','success')">保存</button>`
+  );
+}
+
+function initSupplierHandlers() {}
+
+// ═══ PAGE: LOGS ═══
+function pageLogs() {
+  setTimeout(() => loadLogs(), 50);
+  return `
+<div class="page active">
+  <div class="page-title">📜 操作日志</div>
+  <div class="page-subtitle">系统所有关键操作的审计记录，不可删除或篡改</div>
+  <div class="toolbar">
+    <div class="search-box"><span class="sicon">🔍</span><input type="text" placeholder="搜索操作人/操作内容..." id="logSearch" oninput="loadLogs()"></div>
+    <select id="logType" onchange="loadLogs()"><option value="">全部类型</option><option value="login">登录</option><option value="inbound">入库</option><option value="outbound">出库</option><option value="apply">领用申请</option><option value="approve">审批</option><option value="reject">驳回</option></select>
+  </div>
+  <div class="card"><div class="card-body no-padding"><div class="table-wrap" id="logTable"><p style="padding:20px;color:var(--text-light)">加载中...</p></div></div></div>
+</div>`;
+}
+
+async function loadLogs() {
+  try {
+    const kw = document.getElementById('logSearch')?.value || '';
+    const at = document.getElementById('logType')?.value || '';
+    let params = 'page_size=50';
+    if (kw) params += '&keyword=' + encodeURIComponent(kw);
+    if (at) params += '&action_type=' + at;
+    const res = await api.get('/api/audit-logs?' + params);
+    const items = res.items || [];
+    document.getElementById('logTable').innerHTML = `<table><thead><tr><th>时间</th><th>操作人</th><th>类型</th><th>详情</th><th>IP</th></tr></thead>
+    <tbody>${items.map(l => `<tr><td>${l.created_at}</td><td>${l.username}</td><td><span class="badge badge-info">${l.action_type}</span></td><td>${l.action_detail}</td><td>${l.ip_address||'-'}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:20px">暂无日志</td></tr>'}</tbody></table>`;
+  } catch(e) { document.getElementById('logTable').innerHTML = `<p style="padding:20px;color:var(--danger)">${e.message}</p>`; }
+}
+
+function tableLogs() {
+  const logs = [
+    {time:'2026-06-15 10:28:33',user:'张管理',action:'入库操作',detail:'入库杜邦线 公对母 500根',ip:'192.168.1.100'},
+    {time:'2026-06-15 09:45:12',user:'王主任',action:'审批操作',detail:'同意 LY202606150001 领用申请',ip:'192.168.1.105'},
+    {time:'2026-06-15 09:30:05',user:'李老师',action:'领用申请',detail:'提交领用申请 LY202606150001',ip:'192.168.1.102'},
+    {time:'2026-06-15 08:15:00',user:'张管理',action:'用户登录',detail:'登录系统',ip:'192.168.1.100'},
+    {time:'2026-06-14 16:42:18',user:'张管理',action:'出库操作',detail:'确认出库 LY202606140002',ip:'192.168.1.100'},
+    {time:'2026-06-14 15:10:55',user:'王主任',action:'审批操作',detail:'同意 LY202606140002 领用申请',ip:'192.168.1.105'},
+    {time:'2026-06-14 14:22:30',user:'张管理',action:'入库操作',detail:'入库 STM32F407开发板 20块',ip:'192.168.1.100'},
+    {time:'2026-06-14 11:05:00',user:'赵老师',action:'领用申请',detail:'提交领用申请 LY202606140002',ip:'192.168.1.103'},
+  ];
+  return `<table><thead><tr><th>时间</th><th>操作人</th><th>操作类型</th><th>操作详情</th><th>IP地址</th></tr></thead>
+  <tbody>${logs.map(l=>`<tr>
+    <td>${l.time}</td><td>${l.user}</td><td><span class="badge badge-info">${l.action}</span></td><td>${l.detail}</td><td>${l.ip}</td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+// ═══ PAGE: REPORTS ═══
+// ─── 报表统一预览/导出组件 ───
+const reportCards = [
+  { id:'inbound', title:'📋 入库记录', api:'/api/inbound-records?page_size=100', exportApi:'/api/inbound-records/export/excel',
+    cols:{序号:'idx',入库单号:'inbound_code',耗材:'material_name',批次:'batch_no',数量:'quantity',单价:'unit_price',金额:'total_amount',供应商:'supplier_name',日期:'inbound_date'}, idField:'id' },
+  { id:'requisition', title:'📦 领用记录', api:'/api/requisitions?page_size=100', exportApi:'/api/requisitions/export/excel',
+    cols:{序号:'idx',申请单号:'req_code',申请人:'applicant_name',用途:'purpose',金额:'total_amount',状态:'status',审批人:'approver_name',时间:'created_at'}, idField:'id' },
+  { id:'stock', title:'📊 库存报表', api:'/api/materials?page_size=100', exportApi:'/api/reports/export/stock',
+    cols:{序号:'idx',编号:'material_code',名称:'name',规格:'spec',单价:'unit_price',库存:'stock_qty',库存价值:'stock_value',预警:'alert_status'}, idField:'id' },
+  { id:'discrepancy', title:'⚠️ 盘点差异', api:'/api/materials?page_size=100', exportApi:'/api/reports/export/discrepancy',
+    cols:{序号:'idx',编号:'material_code',名称:'name',规格:'spec',当前库存:'stock_qty',单价:'unit_price',预警:'alert_status'}, idField:'id' },
+  { id:'supplier', title:'🏭 供应商统计', api:'/api/suppliers?page_size=100', exportApi:'/api/reports/export/supplier-stats',
+    cols:{序号:'idx',编号:'supplier_code',名称:'name',联系人:'contact_person',电话:'contact_phone',供货次数:'order_count',累计金额:'total_amount',状态:'coop_status'}, idField:'id' },
+];
+
+function pageReports() {
+  return `
+<div class="page active">
+  <div class="page-title">📈 报表导出</div>
+  <div class="page-subtitle">预览数据、勾选记录、选择性导出</div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    ${reportCards.map(rc => `
+    <div class="card" id="report-${rc.id}">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3>${rc.title}</h3>
+        <div>
+          <button class="btn btn-outline btn-sm" onclick="loadReportPreview('${rc.id}')">📋 加载预览</button>
+          <button class="btn btn-primary btn-sm" onclick="exportExcel('${rc.exportApi}')">📥 导出全部</button>
+        </div>
+      </div>
+      <div class="card-body no-padding" style="display:none" id="preview-${rc.id}">
+        <div style="max-height:400px;overflow:auto">
+          <table style="width:100%;font-size:12px">
+            <thead id="thead-${rc.id}"></thead>
+            <tbody id="tbody-${rc.id}"><tr><td colspan="10" style="text-align:center;color:var(--text-light);padding:24px">加载中...</td></tr></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--border);background:#f8f9fa">
+          <div style="font-size:12px;color:var(--text-light)">
+            <a href="#" onclick="selectAllReport('${rc.id}')" style="margin-right:12px">全选</a>
+            <a href="#" onclick="deselectAllReport('${rc.id}')" style="color:var(--danger)">取消</a>
+            <span style="margin-left:8px" id="count-${rc.id}"></span>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-export-selected-${rc.id}" onclick="exportSelectedReport('${rc.id}')">📥 导出选中</button>
+        </div>
+      </div>
+    </div>
+    `).join('')}
+
+    <div class="card">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3>💾 数据备份</h3>
+        <button class="btn btn-primary btn-sm" onclick="exportExcel('/api/reports/export/backup')">💾 导出全量备份</button>
+      </div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text-light);margin:0">一键导出所有核心数据（耗材、入库、领用、归还、供应商），共5个Sheet的Excel文件。</p>
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+// ─── 报表预览/勾选导出逻辑 ───
+async function loadReportPreview(cardId) {
+  const rc = reportCards.find(c => c.id === cardId);
+  if (!rc) return;
+  const previewDiv = document.getElementById('preview-' + cardId);
+  const tbody = document.getElementById('tbody-' + cardId);
+  const thead = document.getElementById('thead-' + cardId);
+
+  // 切换显示/隐藏
+  if (previewDiv.style.display === 'block') {
+    previewDiv.style.display = 'none';
+    return;
+  }
+  previewDiv.style.display = 'block';
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-light);padding:24px">加载中...</td></tr>';
+
+  try {
+    const res = await api.get(rc.api);
+    const items = res.items || [];
+    const labels = Object.keys(rc.cols);   // 中文表头: ['序号','入库单号',...]
+    const fields = Object.values(rc.cols); // 字段名: ['idx','inbound_code',...]
+
+    // 表头
+    thead.innerHTML = `<tr><th style="width:36px"><input type="checkbox" onchange="toggleAllReport('${cardId}', this.checked)"></th>${labels.map(l => `<th>${l}</th>`).join('')}</tr>`;
+
+    // 数据行
+    tbody.innerHTML = items.map((item, idx) => {
+      const vals = fields.map(f => {
+        if (f === 'idx') return idx + 1;
+        const v = item[f];
+        if (f === 'unit_price' || f === 'total_amount' || f === 'stock_value' || f === 'total_amount') return v != null ? (typeof v === 'number' ? v.toFixed(2) : v) : '';
+        if (f === 'order_count') return v || 0;
+        if (f === 'alert_status') return v === 'low' ? '⚠️低' : v === 'high' ? '📈高' : '正常';
+        if (f === 'status') return v ? statusLabel(v) : '';
+        if (f === 'quantity') return v || '';
+        if (f === 'inbound_date' || f === 'created_at') return v ? v.slice(0, 10) : '';
+        return v ?? '';
+      });
+      return `<tr><td><input type="checkbox" class="rpt-check-${cardId}" value="${item[rc.idField]}"></td>${vals.map(v => `<td>${v}</td>`).join('')}</tr>`;
+    }).join('');
+
+    document.getElementById('count-' + cardId).textContent = `共 ${items.length} 条记录`;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--danger);padding:16px">加载失败: ${e.message}</td></tr>`;
+  }
+}
+
+function toggleAllReport(cardId, checked) {
+  document.querySelectorAll('.rpt-check-' + cardId).forEach(cb => cb.checked = checked);
+}
+
+function selectAllReport(cardId) {
+  document.querySelectorAll('.rpt-check-' + cardId).forEach(cb => cb.checked = true);
+}
+
+function deselectAllReport(cardId) {
+  document.querySelectorAll('.rpt-check-' + cardId).forEach(cb => cb.checked = false);
+}
+
+function exportSelectedReport(cardId) {
+  const checks = document.querySelectorAll('.rpt-check-' + cardId + ':checked');
+  if (checks.length === 0) {
+    showToast('请至少勾选一条记录', 'warning');
+    return;
+  }
+  const ids = Array.from(checks).map(cb => cb.value).join(',');
+  const rc = reportCards.find(c => c.id === cardId);
+  const url = rc.exportApi + '?ids=' + encodeURIComponent(ids);
+  exportExcel(url);
+}
+
+function initReportHandlers() {}
+
+// ═══ PAGE: SETTINGS ═══
+function pageSettings() {
+  return `
+<div class="page active">
+  <div class="page-title">⚙️ 系统设置</div>
+  <div class="page-subtitle">用户信息、审批规则、库存预警及系统参数配置</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(this,'profile')">个人资料</button>
+    <button class="tab-btn" onclick="switchTab(this,'approval-rules');loadConfig()">审批规则</button>
+    <button class="tab-btn" onclick="switchTab(this,'users');loadUserList()">用户管理</button>
+  </div>
+
+  <div class="tab-content active" id="tab-profile">
+    <div class="card"><div class="card-body">
+      <div style="display:flex;align-items:center;gap:24px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)">
+        <div style="width:72px;height:72px;border-radius:50%;overflow:hidden;cursor:pointer;position:relative" onclick="document.getElementById('avatarFile').click()" title="点击更换头像">
+          <img id="profileAvatarImg" src="/api/auth/avatar/${state.user?.id}" style="width:100%;height:100%;object-fit:cover;display:none" onerror="this.style.display='none'">
+          <div id="profileAvatarText" style="width:100%;height:100%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700">${state.user?.avatar||'管'}</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;text-align:center;padding:2px 0">更换</div>
+        </div>
+        <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+        <div>
+          <div style="font-size:20px;font-weight:700" id="profileName">${state.user?.name||'—'}</div>
+          <div style="font-size:13px;color:var(--text-light)">${state.user?.role||'—'} · zachary</div>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>用户名</label><input type="text" id="setUsername" value="${state.user?.username||''}"></div>
+        <div class="form-group"><label>姓名</label><input type="text" id="setRealname" value="${state.user?.name||''}"></div>
+        <div class="form-group"><label>手机号</label><input type="text" id="setPhone" value="${state.user?.phone||''}"></div>
+        <div class="form-group"><label>邮箱</label><input type="email" id="setEmail" value="${state.user?.email||''}"></div>
+        <div class="form-group"><label>新密码</label><input type="password" id="setNewPwd" placeholder="留空不修改"></div>
+        <div class="form-group"><label>确认新密码</label><input type="password" id="setNewPwd2" placeholder="留空不修改"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" onclick="updateProfile()">💾 保存修改</button></div>
+    </div></div>
+  </div>
+
+  <div class="tab-content" id="tab-approval-rules">
+    <div class="card"><div class="card-body" id="configForm"><p style="color:var(--text-light)">加载中...</p></div></div>
+  </div>
+
+  <div class="tab-content" id="tab-users">
+    <div class="card"><div class="card-body no-padding">
+      <div class="toolbar" style="padding:12px 16px;display:flex;gap:12px">
+        <button class="btn btn-primary btn-sm" onclick="showAddUserModal()">+ 新增用户</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>电话</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody id="userTableBody"><tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:20px">加载中...</td></tr></tbody></table></div>
+    </div></div>
+  </div>
+</div>`;
+}
+
+// ─── 头像上传 ───
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const token = api.token;
+    const resp = await fetch('/api/auth/avatar', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form });
+    if (!resp.ok) throw new Error((await resp.json()).detail || '上传失败');
+    const data = await resp.json();
+    // 刷新显示
+    const img = document.getElementById('profileAvatarImg');
+    img.src = data.avatar_url + '?t=' + Date.now();
+    img.style.display = '';
+    document.getElementById('profileAvatarText').style.display = 'none';
+    // 同步侧边栏
+    const sidebarImg = document.getElementById('sidebarAvatarImg');
+    if (sidebarImg) {
+      sidebarImg.src = data.avatar_url + '?t=' + Date.now();
+      sidebarImg.style.display = '';
+      document.getElementById('sidebarAvatarText').style.display = 'none';
+    }
+    showToast('头像已更新','success');
+  } catch(e) { showToast('上传失败：' + e.message, 'error'); }
+}
+
+// ─── 个人资料 ───
+async function updateProfile() {
+  const pwd = document.getElementById('setNewPwd')?.value;
+  const pwd2 = document.getElementById('setNewPwd2')?.value;
+  if (pwd && pwd !== pwd2) { showToast('两次密码不一致','error'); return; }
+  try {
+    const params = [];
+    const username = document.getElementById('setUsername')?.value;
+    const realname = document.getElementById('setRealname')?.value;
+    const phone = document.getElementById('setPhone')?.value;
+    const email = document.getElementById('setEmail')?.value;
+    if (username) params.push('username=' + encodeURIComponent(username));
+    if (realname) params.push('real_name=' + encodeURIComponent(realname));
+    if (phone) params.push('phone=' + encodeURIComponent(phone));
+    if (email) params.push('email=' + encodeURIComponent(email));
+    if (pwd) params.push('new_password=' + encodeURIComponent(pwd));
+    const url = '/api/auth/profile?' + params.join('&');
+    const res = await api.put(url);
+    if (res.user) {
+      state.user = { ...state.user, ...res.user, name: res.user.real_name, avatar: res.user.avatar_initials || res.user.real_name[0] };
+      document.getElementById('profileAvatarText').textContent = state.user.avatar;
+      document.getElementById('profileName').textContent = state.user.name;
+      document.getElementById('sidebarAvatarText').textContent = state.user.avatar;
+      document.getElementById('sidebarName').textContent = state.user.name;
+    }
+    document.getElementById('setNewPwd').value = '';
+    document.getElementById('setNewPwd2').value = '';
+    showToast('个人资料已更新','success');
+  } catch(e) { showToast('保存失败：' + e.message, 'error'); }
+}
+
+// ─── 审批规则 / 预警参数 ───
+async function loadConfig() {
+  try {
+    const cfg = await api.get('/api/config');
+    document.getElementById('configForm').innerHTML = `
+      <h4 style="margin-bottom:12px">审批规则</h4>
+      <div class="form-grid">
+        <div class="form-group"><label>自动审批阈值（元）</label><input type="number" id="cfgAutoApprove" value="${cfg.auto_approve_threshold}" step="0.01"><small>低于此金额自动审批</small></div>
+      </div>
+      <h4 style="margin:20px 0 12px">归还规则</h4>
+      <div class="form-grid">
+        <div class="form-group"><label>逾期罚款（元/天）</label><input type="number" id="cfgFineRate" value="${cfg.return_fine_rate}" step="0.01"></div>
+        <div class="form-group"><label>最长借用天数</label><input type="number" id="cfgMaxDays" value="${cfg.return_max_borrow_days}"></div>
+        <div class="form-group"><label>损坏赔偿比例</label><input type="number" id="cfgDamageRate" value="${cfg.return_damage_rate}" step="0.01" max="1"></div>
+        <div class="form-group"><label>丢失赔偿比例</label><input type="number" id="cfgLossRate" value="${cfg.return_loss_rate}" step="0.01" max="1"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" onclick="saveConfig()">💾 保存配置</button></div>`;
+  } catch(e) { showToast('加载配置失败','error'); }
+}
+
+async function saveConfig() {
+  try {
+    const data = {
+      auto_approve_threshold: parseFloat(document.getElementById('cfgAutoApprove')?.value)||0,
+      return_fine_rate: parseFloat(document.getElementById('cfgFineRate')?.value)||0,
+      return_max_borrow_days: parseInt(document.getElementById('cfgMaxDays')?.value)||30,
+      return_damage_rate: parseFloat(document.getElementById('cfgDamageRate')?.value)||0,
+      return_loss_rate: parseFloat(document.getElementById('cfgLossRate')?.value)||0,
+    };
+    await api.put('/api/config', data);
+    showToast('配置已保存','success');
+  } catch(e) { showToast('保存失败','error'); }
+}
+
+// ─── 用户管理 ───
+async function loadUserList() {
+  try {
+    const res = await api.get('/api/users?page_size=50');
+    const items = res.items || [];
+    const roles = {admin:'耗材管理员',teacher:'教师',approver:'审批人',sysadmin:'系统管理员'};
+    document.getElementById('userTableBody').innerHTML = items.map(u => `<tr>
+      <td>${u.username}</td><td>${u.real_name}</td><td>${roles[u.role]||u.role}</td><td>${u.phone||''}</td>
+      <td><span class="badge ${u.status===1?'badge-success':'badge-default'}">${u.status===1?'正常':'已停用'}</span></td>
+      <td><div class="btn-group">
+        <button class="btn btn-ghost btn-xs" onclick="toggleUser(${u.id})">${u.status===1?'停用':'启用'}</button>
+        <button class="btn btn-ghost btn-xs" onclick="showResetPwdModal(${u.id},'${u.username}')">改密</button>
+      </div></td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:20px">暂无用户</td></tr>';
+  } catch(e) { showToast('仅系统管理员可管理用户','error'); }
+}
+
+function showAddUserModal() {
+  openModal('新增用户',
+    `<div class="form-grid">
+      <div class="form-group"><label>用户名 *</label><input type="text" id="newUsername"></div>
+      <div class="form-group"><label>姓名 *</label><input type="text" id="newRealname"></div>
+      <div class="form-group"><label>角色</label><select id="newRole"><option value="teacher">教师</option><option value="approver">审批人</option><option value="admin">管理员</option></select></div>
+      <div class="form-group"><label>密码 *</label><input type="password" id="newPwd"></div>
+      <div class="form-group"><label>手机</label><input type="text" id="newPhone"></div>
+      <div class="form-group"><label>邮箱</label><input type="text" id="newEmail"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="createUser()">创建</button>`
+  );
+}
+
+async function createUser() {
+  try {
+    await api.post('/api/users', {
+      username: document.getElementById('newUsername')?.value,
+      real_name: document.getElementById('newRealname')?.value,
+      role: document.getElementById('newRole')?.value,
+      password: document.getElementById('newPwd')?.value,
+      phone: document.getElementById('newPhone')?.value,
+      email: document.getElementById('newEmail')?.value,
+    });
+    closeModal();
+    showToast('用户创建成功','success');
+    loadUserList();
+  } catch(e) { showToast('创建失败：'+e.message,'error'); }
+}
+
+async function toggleUser(uid) {
+  try {
+    await api.put(`/api/users/${uid}/toggle-status`);
+    showToast('操作成功','success');
+    loadUserList();
+  } catch(e) { showToast('操作失败：'+e.message,'error'); }
+}
+
+function showResetPwdModal(uid, uname) {
+  openModal(`重置密码 - ${uname}`,
+    `<div class="form-group"><label>新密码</label><input type="password" id="resetPwd" placeholder="至少4位"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="resetUserPwd(${uid})">确认</button>`
+  );
+}
+
+async function resetUserPwd(uid) {
+  try {
+    await api.put(`/api/users/${uid}/reset-password`, { new_password: document.getElementById('resetPwd')?.value });
+    closeModal();
+    showToast('密码已重置','success');
+  } catch(e) { showToast('重置失败：'+e.message,'error'); }
+}
+
+function initSettingsHandlers() {}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function formatDate(d) {
+  return d.toISOString().slice(0,10);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Pre-fill login
+  document.getElementById('loginUser').focus();
+  // Enter key to login
+  document.getElementById('loginPass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  // Close modal on overlay click
+  document.getElementById('modalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+});
+</script>
+</body>
+</html>
